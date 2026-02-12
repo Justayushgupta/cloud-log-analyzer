@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: #0f2027;
+            color: white;
+        }
+
+        .layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: #1c2b36;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar li {
+            padding: 10px 0;
+            cursor: pointer;
+        }
+
+        .sidebar li:hover {
+            color: #00ffcc;
+        }
+
+        .main {
+            flex: 1;
+            padding: 30px;
+        }
+
+        .cards {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #203a43;
+            padding: 20px;
+            border-radius: 10px;
+            width: 200px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            text-align: left;
+        }
+
+        .HIGH { color: red; }
+        .CRITICAL { color: #ff0000; font-weight: bold; }
+        .MEDIUM { color: orange; }
+        .LOW { color: #00ff00; }
+
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+        <h2>Cloud Security</h2>
+        <ul>
+            <li>Dashboard</li>
+            <li>Reports</li>
+            <li>Settings</li>
+        </ul>
+    </div>
+
+    <div class="main">
+
+        <h1>Security Dashboard</h1>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Total Reports</h3>
+                <p id="totalReports">0</p>
+            </div>
+
+            <div class="card">
+                <h3>High/Critical Alerts</h3>
+                <p id="highAlerts">0</p>
+            </div>
+        </div>
+
+        <h2>Recent Reports</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Risk Level</th>
+                    <th>Severity</th>
+                    <th>Attack Type</th>
+                </tr>
+            </thead>
+            <tbody id="reportTable">
+            </tbody>
+        </table>
+
+    </div>
+</div>
+
+<script>
+async function loadReports() {
+
+    const response = await fetch("http://127.0.0.1:8000/reports/");
+    const data = await response.json();
+
+    document.getElementById("totalReports").innerText = data.length;
+
+    let highCount = 0;
+    const table = document.getElementById("reportTable");
+    table.innerHTML = "";
+
+    data.forEach(report => {
+
+        if (report.risk_level === "HIGH" || report.risk_level === "CRITICAL") {
+            highCount++;
+        }
+
+        const row = `
+            <tr>
+                <td>${report.id}</td>
+                <td class="${report.risk_level}">${report.risk_level}</td>
+                <td>${report.severity_score}</td>
+                <td>${report.attack_type}</td>
+            </tr>
+        `;
+
+        table.innerHTML += row;
+    });
+
+    document.getElementById("highAlerts").innerText = highCount;
+}
+
+loadReports();
+</script>
+
+</body>
+</html>

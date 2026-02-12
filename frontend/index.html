@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cloud Log Intrusion Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 40px;
+            font-size: 36px;
+            letter-spacing: 2px;
+        }
+
+        .container {
+            margin-top: 60px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            width: 450px;
+            margin: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            transform: scale(1.03);
+        }
+
+        input {
+            margin: 20px;
+            padding: 8px;
+        }
+
+        button {
+            padding: 12px 25px;
+            background: #00ffcc;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #00ccaa;
+            transform: scale(1.05);
+        }
+
+        .result {
+            margin-top: 25px;
+            font-size: 18px;
+        }
+
+        .LOW { color: #00ff00; }
+        .MEDIUM { color: #ffcc00; }
+        .HIGH { color: #ff4444; }
+        .CRITICAL { color: #ff0000; font-weight: bold; }
+    </style>
+</head>
+
+<body>
+
+<h1>Cloud Intrusion Detection System</h1>
+
+<div class="container">
+    <div class="card">
+        <input type="file" id="logFile">
+        <br>
+        <button type="button" id="analyzeBtn">Analyze Log File</button>
+
+
+        <div class="result" id="result" style="display:none;">
+            <p id="riskLevel"></p>
+            <p id="severity"></p>
+            <p id="attackType"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById("analyzeBtn").addEventListener("click", async function () {
+
+    const fileInput = document.getElementById("logFile");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Please select a file first.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const response = await fetch("/upload/", {
+
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        const resultDiv = document.getElementById("result");
+        resultDiv.style.display = "block";
+
+        document.getElementById("riskLevel").innerHTML =
+            "Risk Level: <span class='" + data.risk_assessment.risk_level + "'>" +
+            data.risk_assessment.risk_level + "</span>";
+
+        document.getElementById("severity").innerText =
+            "Severity Score: " + data.risk_assessment.severity_score;
+
+        document.getElementById("attackType").innerText =
+            "Attack Type: " + data.risk_assessment.attack_type;
+
+    } catch (error) {
+        console.error(error);
+        alert("Server not running or CORS issue.");
+    }
+
+});
+</script>
+
+
+</body>
+</html>

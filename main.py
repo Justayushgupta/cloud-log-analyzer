@@ -1,16 +1,36 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 import re
+import json
+
 from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import json
-
 
 app = FastAPI()
-# Database setup
+
+# ---------- Templates ----------
+templates = Jinja2Templates(directory="frontend")
+
+# ---------- CORS (for safety during dev) ----------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---------- Database ----------
 DATABASE_URL = "sqlite:///./logs.db"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False}
+)
+
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
@@ -24,13 +44,18 @@ class LogReport(Base):
     attack_type = Column(String)
     report_json = Column(Text)
 
-
-
-
 Base.metadata.create_all(bind=engine)
-@app.get("/")
-def home():
-    return {"message": "Cloud Log Analyzer Backend Running"}
+
+# ---------- Routes ----------
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @app.get("/reports/")
@@ -51,7 +76,6 @@ def get_reports():
     ]
 
 
-    return {"message": "Cloud Log Analyzer Backend Running"}
 @app.post("/upload/")
 async def upload_log(file: UploadFile = File(...)):
     content = await file.read()
@@ -72,7 +96,7 @@ async def upload_log(file: UploadFile = File(...)):
 
     high_risk_ips = [ip for ip, count in suspicious_ips.items() if count > 3]
 
-    # Severity scoring
+    # Severity Score
     severity_score = failed_attempts * 5 + len(high_risk_ips) * 20
 
     if severity_score > 100:
@@ -86,7 +110,8 @@ async def upload_log(file: UploadFile = File(...)):
         risk_level = "MEDIUM"
     else:
         risk_level = "LOW"
-    # Attack classification
+
+    # Attack Type
     if failed_attempts > 5:
         attack_type = "Brute Force Attack"
     elif len(high_risk_ips) > 0:
@@ -102,18 +127,17 @@ async def upload_log(file: UploadFile = File(...)):
             "high_risk_ips": high_risk_ips
         },
         "risk_assessment": {
-
-                    
             "risk_level": risk_level,
             "severity_score": severity_score,
             "attack_type": attack_type,
-            "recommendation": "Immediate investigation required."
-            if risk_level in ["HIGH", "CRITICAL"]
-            else "System appears stable. Monitor regularly."
-        
-
+            "recommendation":
+                "Immediate investigation required."
+                if risk_level in ["HIGH", "CRITICAL"]
+                else "System appears stable. Monitor regularly."
         }
     }
+
+    # Save to DB
     db = SessionLocal()
 
     db_report = LogReport(
@@ -127,7 +151,5 @@ async def upload_log(file: UploadFile = File(...)):
     db.add(db_report)
     db.commit()
     db.close()
-
-    
 
     return report
