@@ -1,164 +1,374 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Security Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
+<title>Cloud Threat Intelligence</title>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Orbitron', sans-serif;
-            background: #0f2027;
-            color: white;
-        }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .layout {
-            display: flex;
-            height: 100vh;
-        }
+<style>
 
-        .sidebar {
-            width: 220px;
-            background: #1c2b36;
-            padding: 20px;
-        }
+body{
+margin:0;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#0f172a,#0b1120);
+color:white;
+}
 
-        .sidebar h2 {
-            font-size: 18px;
-        }
+.header{
+padding:20px;
+text-align:center;
+font-size:28px;
+font-weight:bold;
+background:#0f172a;
+box-shadow:0 4px 20px rgba(0,0,0,0.4);
+}
 
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-        }
+.container{
+padding:40px;
+max-width:1200px;
+margin:auto;
+}
 
-        .sidebar li {
-            padding: 10px 0;
-            cursor: pointer;
-        }
+.cards{
+display:flex;
+flex-wrap:wrap;
+gap:20px;
+margin-bottom:30px;
+}
 
-        .sidebar li:hover {
-            color: #00ffcc;
-        }
+.card{
+flex:1;
+min-width:200px;
+background:#1e293b;
+padding:25px;
+border-radius:12px;
+text-align:center;
+transition:.3s;
+}
 
-        .main {
-            flex: 1;
-            padding: 30px;
-        }
+.card:hover{
+transform:translateY(-5px);
+box-shadow:0 0 25px rgba(59,130,246,.6);
+}
 
-        .cards {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
+.card h2{
+font-size:34px;
+margin-top:10px;
+}
 
-        .card {
-            background: #203a43;
-            padding: 20px;
-            border-radius: 10px;
-            width: 200px;
-        }
+.upload-box{
+background:#1e293b;
+padding:20px;
+border-radius:12px;
+margin-bottom:30px;
+}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+.upload-btn{
+padding:10px 18px;
+background:#3b82f6;
+border:none;
+border-radius:6px;
+color:white;
+cursor:pointer;
+}
 
-        th, td {
-            padding: 10px;
-            border-bottom: 1px solid #444;
-            text-align: left;
-        }
+.upload-btn:hover{
+background:#2563eb;
+}
 
-        .HIGH { color: red; }
-        .CRITICAL { color: #ff0000; font-weight: bold; }
-        .MEDIUM { color: orange; }
-        .LOW { color: #00ff00; }
+.alert{
+display:none;
+padding:15px;
+margin-bottom:20px;
+border-radius:8px;
+background:#7f1d1d;
+font-weight:bold;
+animation:pulse 1.5s infinite;
+}
 
-    </style>
+@keyframes pulse{
+0%{opacity:1}
+50%{opacity:.5}
+100%{opacity:1}
+}
+
+canvas{
+margin-top:20px;
+max-width:500px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:#1e293b;
+border-radius:10px;
+overflow:hidden;
+margin-top:20px;
+}
+
+th,td{
+padding:12px;
+border-bottom:1px solid #334155;
+text-align:center;
+}
+
+th{
+background:#0f172a;
+}
+
+tr:hover{
+background:#0b1220;
+}
+
+.LOW{color:#22c55e}
+.MEDIUM{color:#facc15}
+.HIGH{color:#f97316}
+.CRITICAL{color:#ef4444;font-weight:bold}
+
+</style>
 </head>
+
 
 <body>
 
-<div class="layout">
-
-    <div class="sidebar">
-        <h2>Cloud Security</h2>
-        <ul>
-            <li>Dashboard</li>
-            <li>Reports</li>
-            <li>Settings</li>
-        </ul>
-    </div>
-
-    <div class="main">
-
-        <h1>Security Dashboard</h1>
-
-        <div class="cards">
-            <div class="card">
-                <h3>Total Reports</h3>
-                <p id="totalReports">0</p>
-            </div>
-
-            <div class="card">
-                <h3>High/Critical Alerts</h3>
-                <p id="highAlerts">0</p>
-            </div>
-        </div>
-
-        <h2>Recent Reports</h2>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Risk Level</th>
-                    <th>Severity</th>
-                    <th>Attack Type</th>
-                </tr>
-            </thead>
-            <tbody id="reportTable">
-            </tbody>
-        </table>
-
-    </div>
+<div class="header">
+🛡 Cloud Threat Intelligence Dashboard
 </div>
 
+<div class="container">
+
+<div class="alert" id="criticalAlert">
+🚨 CRITICAL THREAT DETECTED
+</div>
+
+
+<!-- Upload Section -->
+
+<div class="upload-box">
+
+<h3>Upload Log File</h3>
+
+<input type="file" id="logFile">
+
+<button class="upload-btn" onclick="uploadLog()">
+Upload
+</button>
+
+<p id="uploadResult"></p>
+
+</div>
+
+
+<!-- Analytics Cards -->
+
+<div class="cards">
+
+<div class="card">
+<p>Total Logs</p>
+<h2 id="totalLogs">0</h2>
+</div>
+
+<div class="card">
+<p>High / Critical Alerts</p>
+<h2 id="highAlerts">0</h2>
+</div>
+
+<div class="card">
+<p>Average Severity</p>
+<h2 id="avgSeverity">0</h2>
+</div>
+
+<div class="card">
+<p>Top Attack</p>
+<h2 id="topAttack">N/A</h2>
+</div>
+
+</div>
+
+
+<canvas id="riskChart"></canvas>
+
+<canvas id="severityTrend"></canvas>
+
+
+<h3>Recent Logs</h3>
+
+<table>
+
+<thead>
+<tr>
+<th>ID</th>
+<th>Risk</th>
+<th>Severity</th>
+<th>Attack</th>
+<th>Top IP</th>
+<th>Time</th>
+</tr>
+</thead>
+
+<tbody id="reportTable"></tbody>
+
+</table>
+
+</div>
+
+
 <script>
-async function loadReports() {
 
-    const response = await fetch("http://127.0.0.1:8000/reports/");
-    const data = await response.json();
+let riskChart
+let severityChart
 
-    document.getElementById("totalReports").innerText = data.length;
 
-    let highCount = 0;
-    const table = document.getElementById("reportTable");
-    table.innerHTML = "";
+async function uploadLog(){
 
-    data.forEach(report => {
+const fileInput=document.getElementById("logFile")
 
-        if (report.risk_level === "HIGH" || report.risk_level === "CRITICAL") {
-            highCount++;
-        }
-
-        const row = `
-            <tr>
-                <td>${report.id}</td>
-                <td class="${report.risk_level}">${report.risk_level}</td>
-                <td>${report.severity_score}</td>
-                <td>${report.attack_type}</td>
-            </tr>
-        `;
-
-        table.innerHTML += row;
-    });
-
-    document.getElementById("highAlerts").innerText = highCount;
+if(!fileInput.files.length){
+alert("Select log file")
+return
 }
 
-loadReports();
+const formData=new FormData()
+
+formData.append("file",fileInput.files[0])
+
+const res=await fetch("/upload/",{
+method:"POST",
+body:formData
+})
+
+const data=await res.json()
+
+document.getElementById("uploadResult").innerText=
+"Risk "+data.risk_level+
+" | Severity "+data.severity_score+
+" | Attack "+data.attack_type
+
+loadDashboard()
+
+}
+
+
+
+async function loadDashboard(){
+
+const analyticsRes=await fetch("/analytics/")
+const analytics=await analyticsRes.json()
+
+animateValue("totalLogs",analytics.total_logs)
+animateValue("highAlerts",analytics.high_alerts)
+animateValue("avgSeverity",analytics.average_severity)
+
+document.getElementById("topAttack").innerText=analytics.top_attack_type
+
+if(analytics.distribution.CRITICAL>0)
+document.getElementById("criticalAlert").style.display="block"
+
+
+const ctx=document.getElementById("riskChart").getContext("2d")
+
+if(riskChart)riskChart.destroy()
+
+riskChart=new Chart(ctx,{
+type:"doughnut",
+data:{
+labels:["LOW","MEDIUM","HIGH","CRITICAL"],
+datasets:[{
+data:[
+analytics.distribution.LOW,
+analytics.distribution.MEDIUM,
+analytics.distribution.HIGH,
+analytics.distribution.CRITICAL
+],
+backgroundColor:["#22c55e","#facc15","#f97316","#ef4444"]
+}]
+}
+})
+
+
+const reportsRes=await fetch("/reports/")
+const reports=await reportsRes.json()
+
+const table=document.getElementById("reportTable")
+
+table.innerHTML=""
+
+let labels=[]
+let severityData=[]
+
+
+reports.slice(0,10).reverse().forEach(r=>{
+
+table.innerHTML+=`
+<tr>
+<td>${r.id}</td>
+<td class="${r.risk_level}">${r.risk_level}</td>
+<td>${r.severity_score}</td>
+<td>${r.attack_type}</td>
+<td>${r.top_ip}</td>
+<td>${r.created_at}</td>
+</tr>
+`
+
+labels.push("Log "+r.id)
+severityData.push(r.severity_score)
+
+})
+
+
+const trend=document.getElementById("severityTrend").getContext("2d")
+
+if(severityChart)severityChart.destroy()
+
+severityChart=new Chart(trend,{
+type:"line",
+data:{
+labels:labels,
+datasets:[{
+label:"Severity Trend",
+data:severityData,
+borderColor:"#3b82f6",
+backgroundColor:"rgba(59,130,246,0.2)",
+tension:.3
+}]
+}
+})
+
+}
+
+
+function animateValue(id,end){
+
+const obj=document.getElementById(id)
+
+if(!end){
+obj.innerText=0
+return
+}
+
+let start=0
+const step=Math.max(10,Math.floor(800/end))
+
+const timer=setInterval(()=>{
+
+start++
+
+obj.innerText=start
+
+if(start>=end){
+obj.innerText=end
+clearInterval(timer)
+}
+
+},step)
+
+}
+
+
+loadDashboard()
+
+setInterval(loadDashboard,5000)
+
 </script>
 
 </body>

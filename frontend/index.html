@@ -20,17 +20,17 @@
         }
 
         .container {
-            margin-top: 60px;
+            margin-top: 80px;
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255,255,255,0.08);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 30px;
-            width: 450px;
+            padding: 40px;
+            width: 500px;
             margin: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
             transition: 0.3s;
         }
 
@@ -40,17 +40,18 @@
 
         input {
             margin: 20px;
-            padding: 8px;
+            padding: 10px;
+            font-size: 15px;
         }
 
         button {
-            padding: 12px 25px;
+            padding: 14px 30px;
             background: #00ffcc;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 16px;
             transition: 0.3s;
         }
 
@@ -59,15 +60,10 @@
             transform: scale(1.05);
         }
 
-        .result {
-            margin-top: 25px;
+        .status {
+            margin-top: 20px;
             font-size: 18px;
         }
-
-        .LOW { color: #00ff00; }
-        .MEDIUM { color: #ffcc00; }
-        .HIGH { color: #ff4444; }
-        .CRITICAL { color: #ff0000; font-weight: bold; }
     </style>
 </head>
 
@@ -79,14 +75,8 @@
     <div class="card">
         <input type="file" id="logFile">
         <br>
-        <button type="button" id="analyzeBtn">Analyze Log File</button>
-
-
-        <div class="result" id="result" style="display:none;">
-            <p id="riskLevel"></p>
-            <p id="severity"></p>
-            <p id="attackType"></p>
-        </div>
+        <button id="analyzeBtn">Analyze Log File</button>
+        <div class="status" id="status"></div>
     </div>
 </div>
 
@@ -104,36 +94,32 @@ document.getElementById("analyzeBtn").addEventListener("click", async function (
     const formData = new FormData();
     formData.append("file", file);
 
+    const statusDiv = document.getElementById("status");
+    statusDiv.innerText = "Analyzing logs...";
+
     try {
         const response = await fetch("/upload/", {
-
             method: "POST",
             body: formData
         });
 
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error("Server error");
+        }
 
-        const resultDiv = document.getElementById("result");
-        resultDiv.style.display = "block";
+        statusDiv.innerText = "Analysis complete. Redirecting to dashboard...";
 
-        document.getElementById("riskLevel").innerHTML =
-            "Risk Level: <span class='" + data.risk_assessment.risk_level + "'>" +
-            data.risk_assessment.risk_level + "</span>";
-
-        document.getElementById("severity").innerText =
-            "Severity Score: " + data.risk_assessment.severity_score;
-
-        document.getElementById("attackType").innerText =
-            "Attack Type: " + data.risk_assessment.attack_type;
+        setTimeout(() => {
+            window.location.href = "/dashboard";
+        }, 1500);
 
     } catch (error) {
         console.error(error);
-        alert("Server not running or CORS issue.");
+        statusDiv.innerText = "Error connecting to backend.";
     }
 
 });
 </script>
-
 
 </body>
 </html>
