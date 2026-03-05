@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>Cloud Threat Intelligence</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -81,9 +82,10 @@ display:none;
 padding:15px;
 margin-bottom:20px;
 border-radius:8px;
-background:#7f1d1d;
+background:#b91c1c;
 font-weight:bold;
-animation:pulse 1.5s infinite;
+font-size:18px;
+animation:pulse 1s infinite;
 }
 
 @keyframes pulse{
@@ -93,8 +95,8 @@ animation:pulse 1.5s infinite;
 }
 
 canvas{
-margin-top:20px;
-max-width:500px;
+margin-top:40px;
+max-width:700px;
 }
 
 table{
@@ -103,7 +105,7 @@ border-collapse:collapse;
 background:#1e293b;
 border-radius:10px;
 overflow:hidden;
-margin-top:20px;
+margin-top:30px;
 }
 
 th,td{
@@ -126,8 +128,8 @@ background:#0b1220;
 .CRITICAL{color:#ef4444;font-weight:bold}
 
 </style>
-</head>
 
+</head>
 
 <body>
 
@@ -138,11 +140,8 @@ background:#0b1220;
 <div class="container">
 
 <div class="alert" id="criticalAlert">
-🚨 CRITICAL THREAT DETECTED
+🚨 CRITICAL ATTACK DETECTED
 </div>
-
-
-<!-- Upload Section -->
 
 <div class="upload-box">
 
@@ -151,15 +150,12 @@ background:#0b1220;
 <input type="file" id="logFile">
 
 <button class="upload-btn" onclick="uploadLog()">
-Upload
+Analyze Log
 </button>
 
 <p id="uploadResult"></p>
 
 </div>
-
-
-<!-- Analytics Cards -->
 
 <div class="cards">
 
@@ -185,11 +181,11 @@ Upload
 
 </div>
 
-
 <canvas id="riskChart"></canvas>
 
-<canvas id="severityTrend"></canvas>
+<canvas id="topIpChart"></canvas>
 
+<canvas id="severityTrend"></canvas>
 
 <h3>Recent Logs</h3>
 
@@ -212,16 +208,16 @@ Upload
 
 </div>
 
-
 <script>
 
 let riskChart
 let severityChart
-
+let ipChart
 
 async function uploadLog(){
 
 const fileInput=document.getElementById("logFile")
+const result=document.getElementById("uploadResult")
 
 if(!fileInput.files.length){
 alert("Select log file")
@@ -229,28 +225,39 @@ return
 }
 
 const formData=new FormData()
-
 formData.append("file",fileInput.files[0])
+
+result.innerText="Analyzing..."
+
+try{
 
 const res=await fetch("/upload/",{
 method:"POST",
 body:formData
 })
 
+if(!res.ok) throw new Error()
+
 const data=await res.json()
 
-document.getElementById("uploadResult").innerText=
+result.innerText=
 "Risk "+data.risk_level+
 " | Severity "+data.severity_score+
 " | Attack "+data.attack_type
 
 loadDashboard()
 
+}catch{
+
+result.innerText="Upload failed"
+
 }
 
-
+}
 
 async function loadDashboard(){
+
+try{
 
 const analyticsRes=await fetch("/analytics/")
 const analytics=await analyticsRes.json()
@@ -261,9 +268,21 @@ animateValue("avgSeverity",analytics.average_severity)
 
 document.getElementById("topAttack").innerText=analytics.top_attack_type
 
-if(analytics.distribution.CRITICAL>0)
-document.getElementById("criticalAlert").style.display="block"
+const alertBox=document.getElementById("criticalAlert")
 
+if(analytics.distribution.CRITICAL>0){
+
+alertBox.style.display="block"
+
+alertBox.innerHTML=
+"🚨 CRITICAL ATTACK DETECTED<br>"+
+"Total Critical Alerts: "+analytics.distribution.CRITICAL
+
+}else{
+
+alertBox.style.display="none"
+
+}
 
 const ctx=document.getElementById("riskChart").getContext("2d")
 
@@ -285,17 +304,36 @@ backgroundColor:["#22c55e","#facc15","#f97316","#ef4444"]
 }
 })
 
+const ipRes=await fetch("/top-ips/")
+const ipData=await ipRes.json()
+
+const ipLabels=ipData.map(x=>x.ip)
+const ipCounts=ipData.map(x=>x.attacks)
+
+const ipCanvas=document.getElementById("topIpChart").getContext("2d")
+
+if(ipChart)ipChart.destroy()
+
+ipChart=new Chart(ipCanvas,{
+type:"bar",
+data:{
+labels:ipLabels,
+datasets:[{
+label:"Top Attacking IPs",
+data:ipCounts,
+backgroundColor:"#ef4444"
+}]
+}
+})
 
 const reportsRes=await fetch("/reports/")
 const reports=await reportsRes.json()
 
 const table=document.getElementById("reportTable")
-
 table.innerHTML=""
 
 let labels=[]
 let severityData=[]
-
 
 reports.slice(0,10).reverse().forEach(r=>{
 
@@ -315,7 +353,6 @@ severityData.push(r.severity_score)
 
 })
 
-
 const trend=document.getElementById("severityTrend").getContext("2d")
 
 if(severityChart)severityChart.destroy()
@@ -334,8 +371,13 @@ tension:.3
 }
 })
 
+}catch(err){
+
+console.error("Dashboard error",err)
+
 }
 
+}
 
 function animateValue(id,end){
 
@@ -352,7 +394,6 @@ const step=Math.max(10,Math.floor(800/end))
 const timer=setInterval(()=>{
 
 start++
-
 obj.innerText=start
 
 if(start>=end){
@@ -363,7 +404,6 @@ clearInterval(timer)
 },step)
 
 }
-
 
 loadDashboard()
 

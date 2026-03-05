@@ -24,6 +24,7 @@ app.add_middleware(
 
 DATABASE = "logs.db"
 
+
 # -------------------------
 # THREAT INTELLIGENCE
 # -------------------------
@@ -36,13 +37,22 @@ KNOWN_MALICIOUS_IPS = {
     "192.42.116.16"
 }
 
+
+# -------------------------
+# DATABASE CONNECTION
+# -------------------------
+
+def get_db():
+    return sqlite3.connect(DATABASE, check_same_thread=False)
+
+
 # -------------------------
 # DATABASE INIT
 # -------------------------
 
 def init_db():
 
-    conn = sqlite3.connect(DATABASE)
+    conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -63,6 +73,7 @@ def init_db():
 
 
 init_db()
+
 
 # -------------------------
 # LOG ANALYSIS ENGINE
@@ -185,7 +196,7 @@ async def upload_log(file: UploadFile = File(...)):
 
         risk_level, severity_score, attack_type, top_ip, failed_attempts, malicious_ip = analyze_log(log_text)
 
-        conn = sqlite3.connect(DATABASE)
+        conn = get_db()
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -197,7 +208,7 @@ async def upload_log(file: UploadFile = File(...)):
             severity_score,
             attack_type,
             top_ip,
-            malicious_ip,
+            malicious_ip if malicious_ip else "N/A",
             failed_attempts,
             datetime.now().isoformat()
         ))
@@ -216,9 +227,7 @@ async def upload_log(file: UploadFile = File(...)):
 
     except Exception as e:
 
-        return JSONResponse({
-            "error": str(e)
-        }, status_code=500)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # -------------------------
@@ -228,7 +237,7 @@ async def upload_log(file: UploadFile = File(...)):
 @app.get("/reports/")
 def get_reports():
 
-    conn = sqlite3.connect(DATABASE)
+    conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -239,7 +248,6 @@ def get_reports():
     """)
 
     rows = cursor.fetchall()
-
     conn.close()
 
     return [
@@ -264,7 +272,7 @@ def get_reports():
 @app.get("/analytics/")
 def analytics():
 
-    conn = sqlite3.connect(DATABASE)
+    conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM reports")
@@ -287,7 +295,6 @@ def analytics():
     top_attack = cursor.fetchone()
 
     cursor.execute("SELECT risk_level, COUNT(*) FROM reports GROUP BY risk_level")
-
     distribution_data = cursor.fetchall()
 
     conn.close()
@@ -309,3 +316,31 @@ def analytics():
         "top_attack_type": top_attack[0] if top_attack else "N/A",
         "distribution": distribution
     }
+
+
+# -------------------------
+# TOP ATTACKING IPS
+# -------------------------
+
+@app.get("/top-ips/")
+def top_ips():
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT top_ip, COUNT(*) as attacks
+        FROM reports
+        WHERE top_ip != 'N/A'
+        GROUP BY top_ip
+        ORDER BY attacks DESC
+        LIMIT 5
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {"ip": row[0], "attacks": row[1]}
+        for row in rows
+    ]
